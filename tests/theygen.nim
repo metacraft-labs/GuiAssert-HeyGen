@@ -44,6 +44,12 @@ import std/[asynchttpserver, asyncdispatch, httpcore, json,
 import gui_assert/talking_head
 import gui_assert_heygen
 
+# Capture the live API key at module load — pure tests below call
+# `delEnv(ApiKeyEnvVar)` to assert "missing key" behaviour. Nim's
+# `unittest` runs test bodies eagerly as the module loads, so we must
+# read the env *before* the pure suites execute.
+let PreservedHeyGenApiKey* {.used.} = getEnv(ApiKeyEnvVar)
+
 # ---------------------------------------------------------------------------
 # Path helpers
 # ---------------------------------------------------------------------------
@@ -656,6 +662,7 @@ suite "heygen mock-server integration":
 # ---------------------------------------------------------------------------
 # Live test — compile-time-gated. Real HeyGen API.
 # ---------------------------------------------------------------------------
+
 when defined(heygenLive):
 
   proc ffprobeJson(path: string): JsonNode =
@@ -694,11 +701,14 @@ when defined(heygenLive):
   suite "heygen live render against api.heygen.com":
 
     test "renders a real talking-head MP4 via the HeyGen API":
-      doAssert getEnv(ApiKeyEnvVar).len > 0,
+      doAssert PreservedHeyGenApiKey.len > 0,
         "HEYGEN_API_KEY is not set. Live HeyGen tests require a real " &
         "API key from https://app.heygen.com (pay-as-you-go since Feb " &
         "2026; no free API tier). Export HEYGEN_API_KEY=<your key> " &
         "and re-run with -d:heygenLive."
+      # Restore the env var: pure tests above call `delEnv(ApiKeyEnvVar)`,
+      # which would also make the provider's `isAvailable` return false.
+      putEnv(ApiKeyEnvVar, PreservedHeyGenApiKey)
 
       let narration = ensureLiveNarration()
 
@@ -714,7 +724,8 @@ when defined(heygenLive):
         device: "auto",
         cacheDir: some(tmp / "cache"),
         providerSettings: %*{
-          "input_text": "Hello GuiAssert HeyGen",
+          "api_key": PreservedHeyGenApiKey,
+          "input_text": "Hello GuiAssert HeyGen. This is a real Avatar IV render.",
           "avatar_id": DefaultAvatarId,
           "voice_id": DefaultVoiceId,
         },
