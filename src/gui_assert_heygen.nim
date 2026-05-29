@@ -78,6 +78,7 @@
 import std/[os, options, json, httpclient, sha1, strutils, times]
 
 import gui_assert/talking_head
+import gui_assert/emotive
 
 type
   HeyGenError* = object of TalkingHeadError
@@ -148,6 +149,71 @@ proc buildGenerateBody*(inputText, avatarId, voiceId: string;
       "height": height
     }
   }
+
+# ---------------------------------------------------------------------------
+# Capabilities + emotive translation
+# ---------------------------------------------------------------------------
+
+const HeyGenCapabilities* = ProviderCapabilities(
+  supportsEmotion: true,           ## via voice.emotion (Avatar IV)
+  supportsHeadMotion: false,
+  supportsExpressionScale: false,
+  supportsGreenScreen: true,       ## background: {type: color, value: "#00ff00"}
+  supportsTransparentBg: false,
+  supportsAudioInput: false,
+  supportsTextInput: true,
+  supportsVoiceTuning: true,       ## voice.speed + voice.pitch
+  supportsGestures: false,
+  supportsEyeContact: false,
+  supportedEmotions: @[
+    "Neutral", "Excited", "Friendly", "Serious", "Soothing",
+    "Broadcaster",
+  ],
+)
+
+proc emotiveToProviderSettings*(c: CommonEmotiveConfig;
+                                base: JsonNode = nil): JsonNode =
+  ## Project a `CommonEmotiveConfig` onto the JSON sub-tree HeyGen's
+  ## `POST /v2/video/generate` exposes.  Output keys live under the
+  ## flat `providerSettings` namespace this plugin already understands
+  ## (`voice_speed`, `voice_pitch`, `emotion`, `background`,
+  ## `background_color`).  The plugin's generate path consumes them
+  ## and emits the per-keyframe request body.
+  ##
+  ## When `base` is supplied, caller-set keys win — the projection
+  ## only fills in keys the caller hasn't explicitly addressed.
+  result = if base.isNil or base.kind != JObject: newJObject() else: base
+  if c.voiceSpeed.isSome:
+    setIfMissing(result, "voice_speed", %c.voiceSpeed.get)
+  if c.voicePitch.isSome:
+    setIfMissing(result, "voice_pitch", %c.voicePitch.get)
+  if c.emotion.isSome:
+    setIfMissing(result, "emotion",
+                 %mapEmotion(HeyGenCapabilities, c.emotion.get))
+  if c.background.isSome:
+    setIfMissing(result, "background", %($c.background.get))
+  if c.backgroundColor.isSome:
+    setIfMissing(result, "background_color", %c.backgroundColor.get)
+
+proc applyBackgroundToBody*(body: JsonNode, c: CommonEmotiveConfig) =
+  ## Layer the `background` field onto a generate-body JSON object.
+  ## Called by the live generator after `buildGenerateBody` so the
+  ## chroma-key downstream pipeline gets a clean canvas.
+  if body.isNil or body.kind != JObject: return
+  if c.background.isNone: return
+  case c.background.get
+  of bmGreenScreen:
+    let color = if c.backgroundColor.isSome: c.backgroundColor.get
+                else: "#00ff00"
+    body["video_inputs"][0]["background"] = %*{
+      "type": "color", "value": color,
+    }
+  of bmSolidColor:
+    if c.backgroundColor.isSome:
+      body["video_inputs"][0]["background"] = %*{
+        "type": "color", "value": c.backgroundColor.get,
+      }
+  of bmTransparent, bmAsIs, bmTrained: discard
 
 proc resolveApiKey*(opts: TalkingHeadOpts): string =
   ## Order of precedence: `opts.providerSettings.api_key`, then the
@@ -390,6 +456,158 @@ proc pollVideoStatus*(apiKey, apiBase, videoId: string,
         "HeyGen video " & videoId & " did not reach status=completed within " &
         $maxSecs & "s (last status=" & status & ")")
     sleep(intervalMs)
+
+# ---------------------------------------------------------------------------
+# Avatar + voice discovery
+# ---------------------------------------------------------------------------
+
+proc parseGenderField(node: JsonNode): Gender =
+  if node.isNil or node.kind != JString: return gUnspecified
+  parseGender(node.getStr)
+
+proc listAvatars*(apiKey: string;
+                  apiBase: string = DefaultHeyGenApiBase):
+    seq[AvatarInfo] =
+  ## `GET /v2/avatars` — returns the avatars the supplied API key is
+  ## permitted to use.  Each entry is normalised onto the shared
+  ## `AvatarInfo` shape (id / name / gender / description / tags /
+  ## previewUrl) so callers can feed the result to
+  ## `matchPreferredAvatar`.
+  result = @[]
+  if apiKey.len == 0:
+    raise newException(HeyGenError,
+      "listAvatars: HEYGEN_API_KEY is required")
+  let client = newHeyGenHttpClient(apiKey)
+  try:
+    let resp = client.request(apiBase & "/v2/avatars",
+                              httpMethod = HttpGet)
+    if not resp.code.is2xx:
+      raiseHttp("GET /v2/avatars", resp)
+    let parsed = parseJson(resp.body)
+    let data = unwrapData(parsed, "GET /v2/avatars")
+    if not data.hasKey("avatars"): return
+    let lst = data["avatars"]
+    if lst.kind != JArray: return
+    for it in lst.items:
+      if it.kind != JObject: continue
+      var a = AvatarInfo()
+      a.id = it{"avatar_id"}.getStr("")
+      a.name = it{"avatar_name"}.getStr("")
+      a.gender = parseGenderField(it{"gender"})
+      a.description = it{"description"}.getStr("")
+      a.previewUrl = it{"preview_image_url"}.getStr("")
+      if it.hasKey("tags") and it["tags"].kind == JArray:
+        for t in it["tags"].items:
+          if t.kind == JString: a.tags.add t.getStr
+      result.add a
+  finally:
+    closeQuietly(client)
+
+proc listVoices*(apiKey: string;
+                 apiBase: string = DefaultHeyGenApiBase):
+    seq[AvatarInfo] =
+  ## `GET /v2/voices` — returns the voice catalogue.  Reuses the
+  ## `AvatarInfo` shape (voice_id ⇒ id, language ⇒ description,
+  ## name ⇒ name) so consumers can `matchPreferredAvatar` against
+  ## voices too.
+  result = @[]
+  if apiKey.len == 0:
+    raise newException(HeyGenError,
+      "listVoices: HEYGEN_API_KEY is required")
+  let client = newHeyGenHttpClient(apiKey)
+  try:
+    let resp = client.request(apiBase & "/v2/voices",
+                              httpMethod = HttpGet)
+    if not resp.code.is2xx:
+      raiseHttp("GET /v2/voices", resp)
+    let parsed = parseJson(resp.body)
+    let data = unwrapData(parsed, "GET /v2/voices")
+    if not data.hasKey("voices"): return
+    let lst = data["voices"]
+    if lst.kind != JArray: return
+    for it in lst.items:
+      if it.kind != JObject: continue
+      var a = AvatarInfo()
+      a.id = it{"voice_id"}.getStr("")
+      a.name = it{"name"}.getStr("")
+      a.gender = parseGenderField(it{"gender"})
+      a.description = it{"language"}.getStr("")
+      if it.hasKey("preview_audio") and it["preview_audio"].kind == JString:
+        a.previewUrl = it["preview_audio"].getStr
+      result.add a
+  finally:
+    closeQuietly(client)
+
+# ---------------------------------------------------------------------------
+# Dry-run validation
+# ---------------------------------------------------------------------------
+
+proc dryRunValidate*(opts: TalkingHeadOpts;
+                     prefs: AvatarPreferences = AvatarPreferences()):
+    DryRunReport =
+  ## Validate a HeyGen render request without spending API credit.
+  ## The check covers:
+  ##
+  ##   * API key presence (envvar or providerSettings)
+  ##   * non-empty input_text
+  ##   * avatar_id resolves either via `prefs` or the configured
+  ##     opt; the listed avatars are fetched via `listAvatars` to
+  ##     confirm the id is currently usable
+  ##   * voice_id similarly resolves and exists in the voice list
+  ##   * narration length (HeyGen returns 400 for empty/whitespace
+  ##     input_text)
+  ##
+  ## `apiBase` defaults to the public endpoint; tests can override
+  ## it via `opts.providerSettings.api_base`.
+  result = newDryRunReport("heygen")
+  let apiKey = resolveApiKey(opts)
+  if apiKey.len == 0:
+    result.addIssue(drError, "api_key",
+      "HEYGEN_API_KEY is not set (or providerSettings.api_key is empty)")
+    return
+  let apiBase = resolveApiBase(opts)
+  let inputText = resolveInputText(opts)
+  if inputText.strip.len == 0:
+    result.addIssue(drError, "input_text",
+      "providerSettings.input_text is empty; HeyGen synthesises voice " &
+      "from this field and returns HTTP 400 on empty input")
+  var avatarId = resolveAvatarId(opts)
+  var voiceId = resolveVoiceId(opts)
+  var availableAvatars: seq[AvatarInfo] = @[]
+  var availableVoices: seq[AvatarInfo] = @[]
+  try:
+    availableAvatars = listAvatars(apiKey, apiBase)
+  except CatchableError as e:
+    result.addIssue(drWarning, "avatars",
+      "could not list avatars: " & e.msg)
+  try:
+    availableVoices = listVoices(apiKey, apiBase)
+  except CatchableError as e:
+    result.addIssue(drWarning, "voices",
+      "could not list voices: " & e.msg)
+  if prefs.preferred.len > 0 and availableAvatars.len > 0:
+    let m = matchPreferredAvatar(prefs, "heygen", availableAvatars)
+    if m.isSome:
+      avatarId = m.get.id
+    else:
+      result.addIssue(drWarning, "avatar_preferences",
+        "no preferred avatar matched; using opts default '" & avatarId & "'")
+  if availableAvatars.len > 0:
+    var hit = false
+    for a in availableAvatars:
+      if a.id == avatarId:
+        hit = true; break
+    if not hit:
+      result.addIssue(drError, "avatar_id",
+        "avatar '" & avatarId & "' is not in the API's avatar list")
+  if availableVoices.len > 0:
+    var hit = false
+    for v in availableVoices:
+      if v.id == voiceId:
+        hit = true; break
+    if not hit:
+      result.addIssue(drError, "voice_id",
+        "voice '" & voiceId & "' is not in the API's voice list")
 
 proc downloadVideo*(videoUrl, outputPath: string) =
   ## Download the rendered MP4. The `video_url` is served from HeyGen's
