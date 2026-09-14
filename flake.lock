@@ -1714,13 +1714,13 @@
         "lastModified": 1779550817,
         "narHash": "sha256-67DQR+jLEOCfIrSsPxtSIlnmTLRfn/b1VOW7eCuaKo4=",
         "owner": "metacraft-labs",
-        "repo": "nixos-modules",
+        "repo": "devops-modules",
         "rev": "593ce1f171abc7cac94d9dfa9d2dae38dadb7256",
         "type": "github"
       },
       "original": {
         "owner": "metacraft-labs",
-        "repo": "nixos-modules",
+        "repo": "devops-modules",
         "type": "github"
       }
     },

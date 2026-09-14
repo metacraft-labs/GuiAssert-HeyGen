@@ -2,7 +2,7 @@
   description = "GuiAssert-HeyGen - HeyGen talking-head plugin for GuiAssert";
 
   inputs = {
-    nixos-modules.url = "github:metacraft-labs/nixos-modules";
+    nixos-modules.url = "github:metacraft-labs/devops-modules";
     nixpkgs.follows = "nixos-modules/nixpkgs-unstable";
     flake-parts.follows = "nixos-modules/flake-parts";
   };
