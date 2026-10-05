@@ -1,0 +1,9 @@
+schema = "reprobuild.solved-graph-lock.v2"
+
+[lock]
+platform = "amd64-linux"
+optimal = false
+inputs_digest = "fnv1a64:cbf29ce484222325"
+variants = []
+packages = []
+deps = [{ name = "GuiAssert-HeyGen", path = ".", coord_kind = "vcs", url = "https://github.com/metacraft-labs/GuiAssert-HeyGen", ref = "agents-to-dev-2026-10-04", revision = "dfbc656376b1fccfadf5fac8c8b9f7aac6d2330a", integrity = "git-sha1:dfbc656376b1fccfadf5fac8c8b9f7aac6d2330a", version = "", visibility = "public", participation = "", depends = "", tags = "" }]
