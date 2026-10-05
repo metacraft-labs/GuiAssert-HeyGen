@@ -2,7 +2,7 @@
 #
 # `just test`              - run the pure + mock-server tests (no network).
 # `just test-live`         - run the gated live test (-d:heygenLive). Requires HEYGEN_API_KEY.
-# `just lint`              - placeholder; required by the workspace pre-commit hook.
+# `just lint`              - check the public plugin module against the sibling GuiAssert API.
 
 default: test
 
@@ -21,7 +21,6 @@ test:
 test-live:
     nim c -d:heygenLive -r --threads:on --hints:off --path:src --path:../GuiAssert/src tests/theygen.nim
 
-# Required by the workspace's pre-commit hook (`just lint`). Add real
-# linters here as they come online (e.g. `nim check`).
+# Check the actual public module with the same threaded sibling API contract.
 lint:
-    @echo "[lint] no linters configured yet for GuiAssert-HeyGen."
+    nim check --threads:on --hints:off --path:src --path:../GuiAssert/src src/gui_assert_heygen.nim

@@ -26,8 +26,8 @@
         {
           devShells.default = pkgs.mkShell {
             # HeyGen is a commercial HTTP API, so this plugin has no
-            # Python / no model weights / no GPU toolchain — just a
-            # pure-Nim HTTP client plus the supporting bits the tests
+            # model weights / no GPU toolchain — just a
+            # pure-Nim HTTP client plus native hook tools and bits the tests
             # use to synthesise audio + verify rendered MP4s.
             packages = with pkgs; [
               nim
@@ -38,8 +38,29 @@
               ffmpeg-full
               openssl
               cacert
+              # Native portable-hook runtimes and formatters from this same pin.
+              prek
+              uv
+              python3
+              editorconfig-checker
+              nixfmt-rfc-style
+              opentofu
+              prettier
             ];
             shellHook = ''
+              # Use this owning pin's native hook tools before ambient tools.
+              export PATH="${
+                pkgs.lib.makeBinPath [
+                  pkgs.prek
+                  pkgs.uv
+                  pkgs.python3
+                  pkgs.editorconfig-checker
+                  pkgs.nixfmt-rfc-style
+                  pkgs.opentofu
+                  pkgs.prettier
+                ]
+              }:$PATH"
+              export PREK_NO_FAST_PATH=1
               # Make Nim's httpclient pick up the system CA bundle so
               # TLS to api.heygen.com works without user setup.
               export SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"

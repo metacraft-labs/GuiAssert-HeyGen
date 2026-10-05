@@ -30,16 +30,16 @@ GuiAssert-HeyGen/
 
 ## Cost of setup
 
-| Resource     | Approx.                                                |
-| ------------ | ------------------------------------------------------ |
-| Disk         | None beyond Nim build artefacts                        |
-| Network      | Per-render JSON + MP4 download, modest                 |
-| Time         | First call ~30 s – minutes (renders are slow)          |
-| Dollars      | **$1 – $4 per minute** of generated video, pay-as-you-go.<br/>No free API tier since February 2026 — the legacy free tier was retired.<br/>API plans cap concurrent generations at 10. |
-| API key      | Yes — `HEYGEN_API_KEY` env var                         |
+| Resource | Approx.                                                                                                                                                                                |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Disk     | None beyond Nim build artefacts                                                                                                                                                        |
+| Network  | Per-render JSON + MP4 download, modest                                                                                                                                                 |
+| Time     | First call ~30 s – minutes (renders are slow)                                                                                                                                          |
+| Dollars  | **$1 – $4 per minute** of generated video, pay-as-you-go.<br/>No free API tier since February 2026 — the legacy free tier was retired.<br/>API plans cap concurrent generations at 10. |
+| API key  | Yes — `HEYGEN_API_KEY` env var                                                                                                                                                         |
 
 Pricing is set by HeyGen; see [their pricing page](https://www.heygen.com/pricing)
-for current numbers. Costs accrue per minute of *generated* video,
+for current numbers. Costs accrue per minute of _generated_ video,
 not per API call, so the cache hit-rate matters — see
 [Caching](#caching) below.
 
@@ -59,7 +59,7 @@ user setup.
 
 GuiAssert's `TalkingHeadProvider.generate` contract is
 `generate(narrationWav, outputMp4, opts)` — i.e. the audio is provided
-as a *pre-rendered WAV*. HeyGen v2's `video/generate` endpoint does
+as a _pre-rendered WAV_. HeyGen v2's `video/generate` endpoint does
 NOT accept uploaded audio in its default mode: it takes an
 `input_text` string plus a `voice_id` and synthesises the voiceover
 itself. This plugin therefore:
@@ -109,15 +109,15 @@ generateTalkingHead(reg, "heygen", narrationWav, outputMp4, opts)
 All knobs live under `TalkingHeadOpts.providerSettings` (a `JsonNode`),
 with environment-variable fallbacks where applicable:
 
-| Setting | YAML key | Env fallback | Default | Purpose |
-| --- | --- | --- | --- | --- |
-| `api_key` | `api_key` | `HEYGEN_API_KEY` | _(none)_ | HeyGen API key. |
-| `api_base` | `api_base` | _(none)_ | `https://api.heygen.com` | API endpoint. Override to point at a mock or staging server. |
-| `input_text` | `input_text` | _(none)_ | _(none)_ | **REQUIRED.** Script for HeyGen to speak. |
-| `avatar_id` | `avatar_id` | _(none)_ | `Daisy-inskirt-20220818` | HeyGen avatar identifier (public stock or custom). |
-| `voice_id` | `voice_id` | _(none)_ | `1bd001e7e50f421d891986aad5158bc8` | HeyGen voice identifier. |
-| `width` | `width` | _(none)_ | `1280` | Output width in pixels. |
-| `height` | `height` | _(none)_ | `720` | Output height in pixels. |
+| Setting      | YAML key     | Env fallback     | Default                            | Purpose                                                      |
+| ------------ | ------------ | ---------------- | ---------------------------------- | ------------------------------------------------------------ |
+| `api_key`    | `api_key`    | `HEYGEN_API_KEY` | _(none)_                           | HeyGen API key.                                              |
+| `api_base`   | `api_base`   | _(none)_         | `https://api.heygen.com`           | API endpoint. Override to point at a mock or staging server. |
+| `input_text` | `input_text` | _(none)_         | _(none)_                           | **REQUIRED.** Script for HeyGen to speak.                    |
+| `avatar_id`  | `avatar_id`  | _(none)_         | `Daisy-inskirt-20220818`           | HeyGen avatar identifier (public stock or custom).           |
+| `voice_id`   | `voice_id`   | _(none)_         | `1bd001e7e50f421d891986aad5158bc8` | HeyGen voice identifier.                                     |
+| `width`      | `width`      | _(none)_         | `1280`                             | Output width in pixels.                                      |
+| `height`     | `height`     | _(none)_         | `720`                              | Output height in pixels.                                     |
 
 The provider name is `"heygen"`.
 
@@ -130,23 +130,25 @@ poll round-trips):
    HeyGen's quick-start:
    ```json
    {
-     "video_inputs": [{
-       "character": {
-         "type": "avatar",
-         "avatar_id": "Daisy-inskirt-20220818",
-         "avatar_style": "normal"
-       },
-       "voice": {
-         "type": "text",
-         "input_text": "Hello, this is HeyGen.",
-         "voice_id": "1bd001e7e50f421d891986aad5158bc8"
+     "video_inputs": [
+       {
+         "character": {
+           "type": "avatar",
+           "avatar_id": "Daisy-inskirt-20220818",
+           "avatar_style": "normal"
+         },
+         "voice": {
+           "type": "text",
+           "input_text": "Hello, this is HeyGen.",
+           "voice_id": "1bd001e7e50f421d891986aad5158bc8"
+         }
        }
-     }],
-     "dimension": {"width": 1280, "height": 720}
+     ],
+     "dimension": { "width": 1280, "height": 720 }
    }
    ```
    The response is wrapped in `{"data": {"video_id": "..."}, "code":
-   100, "message": "Success"}`. The plugin unwraps the `data` envelope
+100, "message": "Success"}`. The plugin unwraps the `data` envelope
    and reads `video_id`.
 2. `GET /v1/video_status.get?video_id=...` — polled every 5 s
    (10-minute timeout) until `data.status == "completed"`.
@@ -154,7 +156,7 @@ poll round-trips):
    does not require the `X-Api-Key` header.
 
 Authentication uses the HeyGen-specific single header
-`X-Api-Key: <HEYGEN_API_KEY>`. (Notably *not* HTTP Basic auth like
+`X-Api-Key: <HEYGEN_API_KEY>`. (Notably _not_ HTTP Basic auth like
 the sibling D-ID plugin.)
 
 ## Caching
@@ -209,3 +211,26 @@ to spend real HeyGen credit simply compiles without `-d:heygenLive`.
 MIT — see `LICENSE`. HeyGen itself is a commercial service governed
 by its own [terms of service](https://www.heygen.com/policy/terms-of-service);
 the plugin only speaks the public REST API.
+
+## Native contributor hooks
+
+The plugin remains a pure Nim HTTP client. Its developer shell also supplies
+native Python, UV, Prek and the portable formatters from its existing pin.
+The committed hook config runs the seven standard checks and actual public lint.
+
+Select the verified matching managed-hook engine as `REPROBUILD_REPRO`.
+From this repository root, bootstrap its genuine managed layout first:
+
+```sh
+direnv exec . nix develop --no-update-lock-file --no-write-lock-file --command "$REPROBUILD_REPRO" hooks ensure --vcs .
+direnv exec . nix develop --no-update-lock-file --no-write-lock-file --command python3 tools/install-canonical-hooks.py --repro "$REPROBUILD_REPRO"
+direnv exec . nix develop --no-update-lock-file --no-write-lock-file --command prek run --all-files
+```
+
+The installer verifies the complete matching engine and dispatcher bytes,
+preserves known local hooks and pre-push bodies/modes, and refuses unknown or
+external hook ownership. Its installed native Prek body persistently selects
+canonical upstream hook implementations even when the caller selector is absent.
+System Python selection uses the owning native interpreter without managed
+Python downloads. Linux qualification does not establish native Windows tools.
+Original test and required live API prerequisites remain unchanged.

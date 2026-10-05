@@ -1,0 +1,36 @@
+# EditorConfig file: http://EditorConfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+indent_size = unset
+
+[scripts/*]
+indent_style = tab
+indent_size = 4
+
+[{Makefile,*.go,.gitmodules}]
+indent_style = tab
+indent_size = 4
+
+# Rust: rustfmt uses 4-space indents with paren-alignment continuations whose
+# leading column is not always a multiple of 2 (e.g. text wrapped to align with
+# the first argument of an `assert_eq!`).  Let rustfmt own indent validation
+# instead of editorconfig-checker.
+[*.rs]
+indent_size = unset
+
+# Nim: 2-space indents are the canonical style, but multi-line proc signatures
+# align continuation lines with the column after the opening `(`, which is
+# rarely on an even column.  Let nimpretty / project convention own the column
+# math instead of editorconfig-checker.
+[*.nim]
+indent_size = unset
