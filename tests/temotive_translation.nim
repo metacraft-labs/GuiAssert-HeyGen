@@ -6,7 +6,7 @@
 ## generate path consumes.
 
 import std/[json, options, strutils, unittest]
-import gui_assert/talking_head, gui_assert/emotive
+import demo_video_studio/plugins/talking_head, demo_video_studio/emotive
 import gui_assert_heygen
 
 suite "HeyGen emotiveToProviderSettings":
