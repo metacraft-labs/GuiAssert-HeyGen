@@ -29,4 +29,4 @@ test-live:
 
 # Check the actual public module with the same threaded sibling API contract.
 lint:
-    nim check --threads:on --hints:off --path:src --path:../GuiAssert/src src/gui_assert_heygen.nim
+    nim check --threads:on --hints:off --path:src --path:../GuiAssert/src --path:../DemoVideoStudio/src src/gui_assert_heygen.nim
