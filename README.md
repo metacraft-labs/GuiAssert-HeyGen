@@ -213,3 +213,26 @@ to spend real HeyGen credit simply compiles without `-d:heygenLive`.
 MIT — see `LICENSE`. HeyGen itself is a commercial service governed
 by its own [terms of service](https://www.heygen.com/policy/terms-of-service);
 the plugin only speaks the public REST API.
+
+## Native contributor hooks
+
+The plugin remains a pure Nim HTTP client. Its developer shell also supplies
+native Python, UV, Prek and the portable formatters from its existing pin.
+The committed hook config runs the seven standard checks and actual public lint.
+
+Select the verified matching managed-hook engine as `REPROBUILD_REPRO`.
+From this repository root, bootstrap its genuine managed layout first:
+
+```sh
+direnv exec . nix develop --no-update-lock-file --no-write-lock-file --command "$REPROBUILD_REPRO" hooks ensure --vcs .
+direnv exec . nix develop --no-update-lock-file --no-write-lock-file --command python3 tools/install-canonical-hooks.py --repro "$REPROBUILD_REPRO"
+direnv exec . nix develop --no-update-lock-file --no-write-lock-file --command prek run --all-files
+```
+
+The installer verifies the complete matching engine and dispatcher bytes,
+preserves known local hooks and pre-push bodies/modes, and refuses unknown or
+external hook ownership. Its installed native Prek body persistently selects
+canonical upstream hook implementations even when the caller selector is absent.
+System Python selection uses the owning native interpreter without managed
+Python downloads. Linux qualification does not establish native Windows tools.
+Original test and required live API prerequisites remain unchanged.
