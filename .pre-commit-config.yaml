@@ -1,0 +1,48 @@
+# Canonical portable seven hooks plus the owning public module lint.
+# Native SDK tools enforce these committed rules; platform/live qualification is separate.
+minimum_pre_commit_version: "3.0.0"
+default_language_version:
+  python: system
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: end-of-file-fixer
+
+  - repo: https://github.com/metacraft-labs/devops-modules
+    rev: 6ba34072850f7348e1669a6daf8a0acb79669434
+    hooks:
+      - id: ban-added-ct-recordings
+
+  - repo: local
+    hooks:
+      - id: editorconfig-checker
+        name: editorconfig-checker
+        entry: editorconfig-checker
+        language: system
+        types: [file]
+      - id: nixfmt
+        name: nixfmt
+        entry: nixfmt
+        language: system
+        files: \.nix$
+      - id: terraform-format
+        name: terraform-format
+        entry: tofu fmt
+        language: system
+        types: [file]
+        files: \.(tf|tftest\.hcl)$
+      - id: prettier
+        name: prettier
+        entry: prettier --check --list-different=false --log-level=warn --ignore-unknown --write
+        language: system
+        types: [text]
+      - id: metacraft-lint
+        name: metacraft-lint
+        entry: just lint
+        language: system
+        pass_filenames: false
+        always_run: true
